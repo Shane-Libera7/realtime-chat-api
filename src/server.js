@@ -18,6 +18,32 @@ server.listen(port);
 io.on('connection', (socket) => {
     console.log('a client has connected:', socket.id);
 
+    //Join room event 
+    socket.on('join-room', (roomName) => {
+        socket.join(roomName);
+        console.log('client has joined room: ', roomName);
+    });
+
+
+    //Leave room event
+    socket.on('leave-room', (roomName) => {
+        socket.leave(roomName);
+        console.log('client has left room: ', roomName);
+    })
+
+    //Send message event
+    socket.on('send-message', ({ roomName, message }) => {
+        if (socket.rooms(roomName)){
+            io.to(roomName).emit(message);
+        }
+    });
+
+
+
+
+
+
+
     socket.on('disconnect', () => {
         console.log('client has disconnected:', socket.id);
     });
