@@ -33,8 +33,8 @@ io.on('connection', (socket) => {
 
     //Send message event
     socket.on('send-message', ({ roomName, message }) => {
-        if (socket.rooms(roomName)){
-            io.to(roomName).emit(message);
+        if (socket.rooms.has(roomName)){
+            io.to(roomName).emit('new-message', message);
         }
     });
 
