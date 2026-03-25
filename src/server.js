@@ -1,3 +1,5 @@
+require('dotenv').config();
+const jwt = require('jsonwebtoken');
 const express = require('express');
 const app = express();
 const socket = require('socket.io');
@@ -13,10 +15,32 @@ const io = new socket.Server(server, {
 //Activate server
 server.listen(port);
 
+//Authentication
+    io.use((socket, next) => {
+        const accessToken = socket.handshake.auth.token;
+
+        try{
+            const validToken = jwt.verify(accessToken, process.env.JWT_SECRET);
+            socket.data.user = validToken;
+            next();
+
+        } catch(e){
+            next(new Error('authentication invalid'));
+            console.log(e);
+        }
+        
+    })
+
 
 //Conection listener 
 io.on('connection', (socket) => {
     console.log('a client has connected:', socket.id);
+
+    
+
+
+
+
 
     //Join room event 
     socket.on('join-room', (roomName) => {
