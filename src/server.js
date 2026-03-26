@@ -6,6 +6,7 @@ const socket = require('socket.io');
 const port = 3000;
 const http = require('http');
 const server = http.createServer(app);
+const db = require('./db');
 const io = new socket.Server(server, {
     cors: {
         origin: '*'
@@ -35,6 +36,9 @@ server.listen(port);
 //Conection listener 
 io.on('connection', (socket) => {
     console.log('a client has connected:', socket.id);
+    let room;
+    let roomId;
+    let messages;
 
     
 
@@ -43,9 +47,28 @@ io.on('connection', (socket) => {
 
 
     //Join room event 
-    socket.on('join-room', (roomName) => {
-        socket.join(roomName);
-        console.log('client has joined room: ', roomName);
+    socket.on('join-room', async (roomName) => {
+        try {
+            //Check Room or make a new Room
+            const existingRoom = await db('rooms').where('name', roomName).first();
+            if(!existingRoom){
+                const newRoom = {
+                owner_id: socket.data.user.userId,
+                name: roomName
+                }
+                const confirmedRoom = await db('rooms').insert(newRoom).returning(['id', 'name']);
+                roomId = confirmedRoom[0].id;
+                } else{
+                roomId = existingRoom.id;
+            }
+            //Fetch messages 
+            messages = await db('messages').where('room_id', roomId).orderBy('created_at', 'desc').limit(50);
+            socket.join(roomName);
+            socket.emit('message-history', messages);
+            console.log('client has joined room: ', roomName);
+        } catch(e){
+            console.log(e);
+        }
     });
 
 
@@ -56,13 +79,39 @@ io.on('connection', (socket) => {
     })
 
     //Send message event
-    socket.on('send-message', ({ roomName, message }) => {
-        if (socket.rooms.has(roomName)){
-            io.to(roomName).emit('new-message', message);
+    socket.on('send-message', async ({ roomName, message }) => {
+       try {
+            if (socket.rooms.has(roomName)){
+            room = await db('rooms').where('name', roomName).first();
+            roomId = room.id;
+            //send Msg to database
+            const newMessage = {
+                room_id: roomId,
+                user_id: socket.data.user.userId,
+                content: message
+            }
+            const confirmedMessage = await db('messages').insert(newMessage).returning(['id', 'content']);
+            io.to(roomName).emit('new-message', confirmedMessage[0]);
+            }
+        } catch(e){
+            console.log(e);
         }
     });
 
 
+    //Load more messages event
+    socket.on('load-more-messages', async ({ roomName, cursor }) => {
+        try {
+            room = await db('rooms').where('name', roomName).first();
+            roomId = room.id;
+            messages = await db('messages').where('room_id', roomId).where('id', '<', cursor).orderBy('created_at', 'desc').limit(50);
+
+            socket.emit('more-messages', messages);
+        } catch(e){
+            console.log(e);
+
+        }
+    })
 
 
 
