@@ -1,7 +1,7 @@
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const express = require('express');
-const app = express();
+const app = require('./app');
 const socket = require('socket.io');
 const port = 3000;
 const http = require('http');
