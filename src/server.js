@@ -12,6 +12,7 @@ const io = new socket.Server(server, {
         origin: '*'
     }
 });
+const redis = require('./redis');
 
 //Activate server
 server.listen(port);
@@ -33,16 +34,29 @@ server.listen(port);
     })
 
 
+
 //Conection listener 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
     console.log('a client has connected:', socket.id);
     let room;
     let roomId;
     let messages;
-
+    const userId = socket.data.user.userId;
     
+ 
+    //Redis Online Presence Tracking
+    await redis.set(`presence:${userId}`, '1', 'EX', 30);
+
+    //Background Interval 
+    const interval = setInterval(async () => {
+        await redis.set(`presence:${userId}`, '1', 'EX', 30);
+    }, 20000);
 
 
+
+    //User Online event
+    io.emit('user-online', userId);
+  
 
 
 
@@ -117,7 +131,13 @@ io.on('connection', (socket) => {
 
 
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
+        await redis.del(`presence:${userId}`);
         console.log('client has disconnected:', socket.id);
+        clearInterval(interval);
+        //User Offline event 
+        io.emit('user-offline', userId);
     });
+    
+    
 });
