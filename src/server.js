@@ -86,11 +86,31 @@ io.on('connection', async (socket) => {
     });
 
 
+
+    //Typing-Start event 
+    const typingTimers = {};
+    socket.on('typing-start', ({ roomName }) => {
+        const key = `${userId}:${roomName}`;
+        clearTimeout(typingTimers[key]);
+
+        typingTimers[key] = setTimeout(() => {
+            socket.to(roomName).emit('typing-stop', { userId });
+            delete typingTimers[key];
+        }, 3000);
+
+        socket.to(roomName).emit('typing-start', { userId });
+    });
+
+    //Typing-Stop event
+    socket.on('typing-stop', ({ roomName }) => {
+        socket.to(roomName).emit('typing-stop', { userId });
+    });
+
     //Leave room event
     socket.on('leave-room', (roomName) => {
         socket.leave(roomName);
         console.log('client has left room: ', roomName);
-    })
+    });
 
     //Send message event
     socket.on('send-message', async ({ roomName, message }) => {
