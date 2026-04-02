@@ -59,6 +59,9 @@ io.on('connection', async (socket) => {
   
 
 
+    //Join personal room immediately on connect 
+    socket.join(`user:${userId}`);
+
 
     //Join room event 
     socket.on('join-room', async (roomName) => {
@@ -85,6 +88,38 @@ io.on('connection', async (socket) => {
         }
     });
 
+
+    //Send Direct Message event
+
+    socket.on('send-direct-message', async ({ recipientId, content }) => {
+        const senderId = socket.data.user.userId;
+
+        //Validation
+        if (!recipientId || !content?.trim()) {
+            return socket.emit('error', { message: 'RecipientId and content are required' });
+        }
+
+        try{
+            //Save to Database 
+            const result = await await db('direct_messages')
+            .insert({
+                    sender_id: senderId,
+                    recipient_id: recipientId,
+                    content: content.trim()
+            })
+            .returning('*');
+            const message = result[0];
+
+            io.to(`user:${recipientId}`).emit('new-direct-message', message);
+
+            socket.emit('new-direct-message', message);
+
+        } catch(e){
+            console.log(e);
+            socket.emit('error', { message: 'Failed to send message'});
+        }
+
+    });
 
 
     //Typing-Start event 
