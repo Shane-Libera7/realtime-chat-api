@@ -7,6 +7,7 @@ const port = 3000;
 const http = require('http');
 const server = http.createServer(app);
 const db = require('./db');
+const { messageLimiter, directMessageLimiter }= require('./middleware/limiter');
 const io = new socket.Server(server, {
     cors: {
         origin: '*'
@@ -100,6 +101,9 @@ io.on('connection', async (socket) => {
         }
 
         try{
+             //Rate limiter
+            await directMessageLimiter.consume(userId);
+
             //Save to Database 
             const result = await await db('direct_messages')
             .insert({
@@ -115,6 +119,9 @@ io.on('connection', async (socket) => {
             socket.emit('new-direct-message', message);
 
         } catch(e){
+            if (e?.remainingPoints !== undefined){
+                socket.emit('error', { message: 'You are sending messages too fast'});
+            }
             console.log(e);
             socket.emit('error', { message: 'Failed to send message'});
         }
@@ -150,9 +157,14 @@ io.on('connection', async (socket) => {
     //Send message event
     socket.on('send-message', async ({ roomName, message }) => {
        try {
+            //Rate limiter
+            await messageLimiter.consume(userId);
+            
+            //Confirm room 
             if (socket.rooms.has(roomName)){
             room = await db('rooms').where('name', roomName).first();
             roomId = room.id;
+
             //send Msg to database
             const newMessage = {
                 room_id: roomId,
@@ -163,6 +175,9 @@ io.on('connection', async (socket) => {
             io.to(roomName).emit('new-message', confirmedMessage[0]);
             }
         } catch(e){
+            if (e?.remainingPoints !== undefined){
+                socket.emit('error', { message: 'You are sending messages too fast'});
+            }
             console.log(e);
         }
     });
