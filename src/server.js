@@ -46,18 +46,20 @@ io.on('connection', async (socket) => {
     
  
     //Redis Online Presence Tracking
-    await redis.set(`presence:${userId}`, '1', 'EX', 30);
+    const count = await redis.incr(`connections:${userId}`);
 
-    //Background Interval 
-    const interval = setInterval(async () => {
+    if (count === 1){
+        await redis.set(`presence:${userId}`, '1', 'EX', 30);
+        //User Online event
+        io.emit('user-online', userId);
+  
+    }
+
+
+    //Background interval
+        const interval = setInterval(async () => {
         await redis.set(`presence:${userId}`, '1', 'EX', 30);
     }, 20000);
-
-
-
-    //User Online event
-    io.emit('user-online', userId);
-  
 
 
     //Join personal room immediately on connect 
@@ -121,9 +123,10 @@ io.on('connection', async (socket) => {
         } catch(e){
             if (e?.remainingPoints !== undefined){
                 socket.emit('error', { message: 'You are sending messages too fast'});
+            } else{
+                console.log(e);
+                socket.emit('error', { message: 'Failed to send message'});
             }
-            console.log(e);
-            socket.emit('error', { message: 'Failed to send message'});
         }
 
     });
@@ -177,8 +180,10 @@ io.on('connection', async (socket) => {
         } catch(e){
             if (e?.remainingPoints !== undefined){
                 socket.emit('error', { message: 'You are sending messages too fast'});
+            } else {
+                console.log(e);
+                socket.emit('error', { message: 'Failed top send message' });
             }
-            console.log(e);
         }
     });
 
@@ -202,11 +207,14 @@ io.on('connection', async (socket) => {
 
 
     socket.on('disconnect', async () => {
-        await redis.del(`presence:${userId}`);
+        const remaining = await redis.decr(`connections:${userId}`);
+        if (remaining === 0){
+            await redis.del(`presence:${userId}`);
+            //User Offline event 
+            io.emit('user-offline', userId);
+        }
         console.log('client has disconnected:', socket.id);
         clearInterval(interval);
-        //User Offline event 
-        io.emit('user-offline', userId);
     });
     
     
