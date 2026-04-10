@@ -15,5 +15,5 @@ exports.up = function(knex) {
 exports.down = function(knex) {
   return knex.schema.alterTable('messages', function(table) {
     table.dropColumn('content');
-});
+  });
 };

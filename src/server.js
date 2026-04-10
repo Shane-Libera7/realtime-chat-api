@@ -15,8 +15,7 @@ const io = new socket.Server(server, {
 });
 const redis = require('./redis');
 
-//Activate server
-server.listen(port);
+
 
 //Authentication
     io.use((socket, next) => {
@@ -219,3 +218,6 @@ io.on('connection', async (socket) => {
     
     
 });
+
+
+module.exports = { server, io };
