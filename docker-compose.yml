@@ -1,4 +1,14 @@
 services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    command: sh -c "npx knex migrate:latest && npm start"
   redis:
     image: redis:7
     ports:
@@ -12,7 +22,7 @@ services:
     environment: 
         POSTGRES_USER: admin
         POSTGRES_PASSWORD: password
-        POSTGRES_DB: task_manager
+        POSTGRES_DB: realtime_chat
     volumes:
           - pgdata:/var/lib/postgresql/data
 
