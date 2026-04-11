@@ -45,21 +45,25 @@ io.on('connection', async (socket) => {
     
  
     //Redis Online Presence Tracking
-    const count = await redis.incr(`connections:${userId}`);
-
-    if (count === 1){
-        await redis.set(`presence:${userId}`, '1', 'EX', 30);
-        //User Online event
-        io.emit('user-online', userId);
-  
+    try {
+        const count = await redis.incr(`connections:${userId}`);
+        if (count === 1) {
+            await redis.set(`presence:${userId}`, '1', 'EX', 30);
+            io.emit('user-online', userId);
+        }
+    } catch(e) {
+        console.log('Redis error:', e.message);
     }
 
 
     //Background interval
         const interval = setInterval(async () => {
+    try {
         await redis.set(`presence:${userId}`, '1', 'EX', 30);
-    }, 20000);
-
+    } catch(e) {
+        console.log('Redis interval error:', e.message);
+    }
+}, 20000);
 
     //Join personal room immediately on connect 
     socket.join(`user:${userId}`);
@@ -86,7 +90,8 @@ io.on('connection', async (socket) => {
             socket.emit('message-history', messages);
             console.log('client has joined room: ', roomName);
         } catch(e){
-            console.log(e);
+            console.log('join-room error:', e);
+            
         }
     });
 
@@ -206,12 +211,15 @@ io.on('connection', async (socket) => {
 
 
     socket.on('disconnect', async () => {
+        try {
         const remaining = await redis.decr(`connections:${userId}`);
         if (remaining === 0){
             await redis.del(`presence:${userId}`);
-            //User Offline event 
             io.emit('user-offline', userId);
         }
+    } catch(e) {
+        console.log('Redis error on disconnect:', e.message);
+    }
         console.log('client has disconnected:', socket.id);
         clearInterval(interval);
     });

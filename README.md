@@ -284,3 +284,24 @@ tests/
        │ • Typing      │          │ • direct_      │
        │   Debounce    │          │   messages     │
        └───────────────┘          └────────────────┘
+
+
+## Testing
+
+```bash
+npm test
+```
+
+### Requirements
+
+Integration tests require both PostgreSQL and Redis to be running locally. Start them with:
+
+```bash
+docker compose up -d
+```
+
+### Notes
+
+- Tests run against a separate `realtime_chat_test` database
+- Redis must be available on `localhost:6379` for presence tracking tests to pass
+- The test suite covers: unauthenticated connection rejection, authenticated room joining, message history retrieval, and direct message delivery
